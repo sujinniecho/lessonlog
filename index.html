@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>LessonLog</title>
+
+<!-- PWA -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LessonLog">
+<meta name="theme-color" content="#1A1A1A">
+<link rel="manifest" href="manifest.json">
+
+<!-- Apple touch icon (inline SVG rendered as PNG via canvas — no extra file needed) -->
+<link rel="apple-touch-icon" id="appleTouchIcon">
+
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #F7F5F0;
+  --surface: #FFFFFF;
+  --ink: #1A1A1A;
+  --ink-mid: #666;
+  --ink-faint: #BBB;
+  --rule: #E8E4DC;
+  --accent: #2D5A3D;
+  --accent-light: #EAF2EC;
+  --warn: #C4622D;
+  --warn-light: #FDF0E8;
+  --dot-done: #2D5A3D;
+  --dot-upcoming: #AAA;
+  --dot-empty: #E0DDD8;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'DM Mono', monospace; background: var(--bg); color: var(--ink); min-height: 100vh; padding-bottom: env(safe-area-inset-bottom); }
+
+header { padding-top: max(1.4rem, env(safe-area-inset-top)); }
+
+.page { display: none; min-height: 100vh; }
+.page.active { display: block; }
+
+/* HEADER */
+header {
+  padding: 1.4rem 2rem;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--rule); background: var(--surface);
+  position: sticky; top: 0; z-index: 10;
+}
+.logo { font-family: 'Instrument Serif', serif; font-size: 1.4rem; letter-spacing: -.02em; cursor: pointer; }
+.logo em { font-style: italic; color: var(--accent); }
+.header-right { display: flex; align-items: center; gap: .8rem; }
+.date-str { font-size: .62rem; color: var(--ink-mid); letter-spacing: .08em; text-transform: uppercase; }
+.btn-primary { background: var(--ink); color: #fff; border: none; border-radius: 6px; padding: 8px 16px; font-family: 'DM Mono', monospace; font-size: .7rem; cursor: pointer; letter-spacing: .04em; transition: opacity .15s; }
+.btn-primary:hover { opacity: .75; }
+.btn-back { background: none; border: none; font-family: 'DM Mono', monospace; font-size: .72rem; color: var(--ink-mid); cursor: pointer; display: flex; align-items: center; gap: 6px; letter-spacing: .03em; }
+.btn-back:hover { color: var(--ink); }
+
+/* HOME MAIN */
+main { padding: 1.6rem 2rem; max-width: 600px; }
+
+.today-strip { background: var(--ink); color: #fff; border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: 1.6rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.today-strip.empty { opacity: .4; justify-content: center; }
+.today-name { font-family: 'Instrument Serif', serif; font-size: 1.15rem; margin-bottom: 2px; }
+.today-meta { font-size: .62rem; opacity: .55; letter-spacing: .05em; }
+.btn-done { background: #fff; color: var(--ink); border: none; border-radius: 7px; padding: 8px 16px; font-family: 'DM Mono', monospace; font-size: .68rem; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all .15s; }
+.btn-done:hover { background: var(--accent-light); color: var(--accent); }
+
+.section-label { font-size: .6rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: .75rem; }
+.students-list { display: flex; flex-direction: column; gap: .4rem; }
+
+.student-card { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: .95rem 1.1rem; cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: .9rem; }
+.student-card:hover { border-color: #C8C4BC; box-shadow: 0 2px 10px rgba(0,0,0,.06); transform: translateY(-1px); }
+.student-card.warn { border-color: var(--warn); background: var(--warn-light); }
+.card-left { flex: 1; min-width: 0; }
+.card-name { font-family: 'Instrument Serif', serif; font-size: 1.05rem; margin-bottom: .45rem; }
+.dots { display: flex; gap: 4px; margin-bottom: .3rem; }
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot.done { background: var(--dot-done); }
+.dot.upcoming { background: var(--dot-upcoming); }
+.dot.empty { background: var(--dot-empty); }
+.card-sub { font-size: .62rem; color: var(--ink-mid); }
+.card-sub.warn-text { color: var(--warn); font-weight: 500; }
+.card-right { text-align: right; flex-shrink: 0; }
+.next-label { font-size: .56rem; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 2px; }
+.next-date { font-size: .76rem; font-weight: 500; }
+.next-date.today { color: var(--accent); }
+.next-date.soon { color: var(--warn); }
+.next-time { font-size: .63rem; color: var(--ink-mid); margin-top: 1px; }
+.chevron { font-size: .68rem; color: var(--ink-faint); }
+
+/* DETAIL PAGE */
+.detail-header { padding: 1.3rem 2rem; display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 1px solid var(--rule); }
+.detail-name { font-family: 'Instrument Serif', serif; font-size: 1.7rem; margin-bottom: .2rem; }
+.detail-sub { font-size: .65rem; color: var(--ink-mid); letter-spacing: .04em; }
+.btn-text { background: none; border: none; font-family: 'DM Mono', monospace; font-size: .67rem; color: var(--ink-mid); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.btn-text:hover { color: var(--ink); }
+.btn-danger-text { background: none; border: none; font-family: 'DM Mono', monospace; font-size: .67rem; color: var(--warn); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+.detail-body { padding: 1.5rem 2rem; max-width: 600px; }
+
+/* Cycle card */
+.cycle-card { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; padding: 1.2rem 1.3rem; margin-bottom: 1.3rem; }
+.cycle-card.warn-card { border-color: var(--warn); background: var(--warn-light); }
+.cycle-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .9rem; }
+.cycle-label { font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mid); margin-bottom: .2rem; }
+.cycle-count { font-family: 'Instrument Serif', serif; font-size: 2rem; line-height: 1; }
+.cycle-count small { font-family: 'DM Mono', monospace; font-size: .72rem; color: var(--ink-mid); }
+.cycle-warn-msg { font-size: .75rem; color: var(--warn); font-weight: 500; margin-top: .4rem; }
+.cycle-dots { display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap; }
+.cycle-dot { width: 12px; height: 12px; border-radius: 50%; }
+.cycle-dot.done { background: var(--dot-done); }
+.cycle-dot.upcoming { background: var(--dot-upcoming); }
+.cycle-dot.empty { background: var(--dot-empty); }
+
+.next-box { background: var(--bg); border-radius: 10px; padding: .85rem 1rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: .8rem; }
+.next-box-label { font-size: .58rem; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-mid); margin-bottom: 3px; }
+.next-box-date { font-size: .88rem; font-weight: 500; }
+.next-box-date.today { color: var(--accent); }
+.next-box-time { font-size: .68rem; color: var(--ink-mid); margin-top: 1px; }
+.btn-change { background: none; border: 1px solid var(--rule); border-radius: 7px; padding: 6px 12px; font-family: 'DM Mono', monospace; font-size: .65rem; cursor: pointer; color: var(--ink-mid); transition: all .15s; }
+.btn-change:hover { border-color: var(--ink); color: var(--ink); }
+
+.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }
+.btn-act { padding: 9px; border-radius: 9px; font-family: 'DM Mono', monospace; font-size: .68rem; cursor: pointer; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); letter-spacing: .03em; transition: all .15s; text-align: center; }
+.btn-act:hover { border-color: var(--ink); background: var(--ink); color: #fff; }
+.btn-act.green { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-act.green:hover { opacity: .85; }
+
+/* History */
+.history-section { margin-top: 1.5rem; }
+.history-item { display: flex; align-items: center; gap: .9rem; padding: .75rem 0; border-bottom: 1px solid var(--rule); }
+.history-item:last-child { border-bottom: none; }
+.hist-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.hist-dot.completed { background: var(--dot-done); }
+.hist-dot.skipped { background: var(--dot-empty); }
+.hist-left { flex: 1; }
+.hist-date { font-size: .76rem; font-weight: 500; }
+.hist-note { font-size: .63rem; color: var(--ink-mid); margin-top: 1px; }
+.hist-badge { font-size: .58rem; padding: 2px 7px; border-radius: 20px; letter-spacing: .04em; }
+.hist-badge.done { background: var(--accent-light); color: var(--accent); }
+.hist-badge.skipped { background: var(--rule); color: var(--ink-mid); }
+
+/* Settings */
+.settings-section { margin-top: 1.6rem; padding-top: 1.3rem; border-top: 1px solid var(--rule); }
+.settings-row { display: flex; justify-content: space-between; align-items: center; padding: .65rem 0; border-bottom: 1px solid var(--rule); }
+.settings-row:last-child { border-bottom: none; }
+.settings-label { font-size: .68rem; color: var(--ink-mid); }
+.settings-val { font-size: .76rem; font-weight: 500; }
+
+/* MODALS */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.28); backdrop-filter: blur(4px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: var(--surface); border-radius: 16px; padding: 1.7rem; width: 390px; max-width: 94vw; max-height: 90vh; overflow-y: auto; transform: translateY(10px); transition: transform .2s; box-shadow: 0 20px 60px rgba(0,0,0,.13); }
+.overlay.open .modal { transform: translateY(0); }
+.modal-title { font-family: 'Instrument Serif', serif; font-size: 1.2rem; margin-bottom: 1.2rem; }
+.field { margin-bottom: .85rem; }
+.field label { display: block; font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mid); margin-bottom: 5px; }
+.field input, .field select { width: 100%; padding: 9px 11px; border: 1px solid var(--rule); border-radius: 8px; font-family: 'DM Mono', monospace; font-size: .8rem; background: var(--bg); color: var(--ink); outline: none; transition: border-color .15s; }
+.field input:focus, .field select:focus { border-color: var(--ink); background: #fff; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+.modal-actions { display: flex; gap: .5rem; justify-content: flex-end; margin-top: 1.2rem; }
+.btn-cancel-modal { padding: 8px 15px; border: 1px solid var(--rule); border-radius: 7px; background: #fff; font-family: 'DM Mono', monospace; font-size: .7rem; cursor: pointer; color: var(--ink-mid); }
+.btn-save { padding: 8px 17px; border: none; border-radius: 7px; background: var(--ink); color: #fff; font-family: 'DM Mono', monospace; font-size: .7rem; cursor: pointer; transition: opacity .15s; }
+.btn-save:hover { opacity: .75; }
+.done-summary { background: var(--accent-light); border-radius: 9px; padding: .85rem 1rem; margin-bottom: 1rem; font-size: .74rem; color: var(--accent); line-height: 1.6; }
+.cycle-banner { background: var(--warn-light); border: 1px solid var(--warn); border-radius: 9px; padding: .8rem 1rem; margin-bottom: 1rem; font-size: .76rem; color: var(--warn); line-height: 1.6; }
+
+.toast { position: fixed; bottom: 1.6rem; left: 50%; transform: translateX(-50%) translateY(14px); background: var(--ink); color: #fff; padding: 8px 17px; border-radius: 8px; font-size: .68rem; letter-spacing: .04em; opacity: 0; transition: all .26s; pointer-events: none; z-index: 300; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.empty-state { text-align: center; padding: 3.5rem 1rem; color: var(--ink-faint); }
+.empty-state p { font-size: .78rem; line-height: 1.8; margin-bottom: 1.2rem; }
+
+@media (max-width: 560px) {
+  header, main, .detail-header, .detail-body { padding-left: 1.1rem; padding-right: 1.1rem; }
+  .action-grid, .field-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════ HOME PAGE ════ -->
+<div class="page active" id="pageHome">
+  <header>
+    <div class="logo">Lesson<em>Log</em></div>
+    <div class="header-right">
+      <span class="date-str" id="headerDate"></span>
+      <button class="btn-primary" onclick="openModal('addStudentOverlay')">+ Student</button>
+    </div>
+  </header>
+  <main>
+    <div id="todayStrip"></div>
+    <div class="section-label">All Students</div>
+    <div class="students-list" id="studentsList"></div>
+    <div class="empty-state" id="emptyState" style="display:none">
+      <p>No students yet.<br>Add your first to get started.</p>
+      <button class="btn-primary" onclick="openModal('addStudentOverlay')">+ Add Student</button>
+    </div>
+  </main>
+</div>
+
+<!-- ════ STUDENT DETAIL PAGE ════ -->
+<div class="page" id="pageDetail">
+  <header>
+    <button class="btn-back" onclick="goHome()">← All Students</button>
+    <button class="btn-primary" onclick="openDoneModal()">✓ Mark Done</button>
+  </header>
+  <div class="detail-header">
+    <div>
+      <div class="detail-name" id="detailName"></div>
+      <div class="detail-sub" id="detailSub"></div>
+    </div>
+    <button class="btn-text" onclick="openEditStudent()">Edit student</button>
+  </div>
+  <div class="detail-body">
+    <div class="cycle-card" id="cycleCard">
+      <div class="cycle-top">
+        <div>
+          <div class="cycle-label">This Cycle</div>
+          <div class="cycle-count" id="cycleCount"></div>
+          <div class="cycle-warn-msg" id="cycleWarnMsg" style="display:none"></div>
+        </div>
+      </div>
+      <div class="cycle-dots" id="cycleDots"></div>
+      <div class="next-box">
+        <div>
+          <div class="next-box-label">Next Lesson</div>
+          <div class="next-box-date" id="nextBoxDate"></div>
+          <div class="next-box-time" id="nextBoxTime"></div>
+        </div>
+        <button class="btn-change" onclick="openScheduleModal()">Change</button>
+      </div>
+      <div class="action-grid" id="actionGrid"></div>
+    </div>
+
+    <div class="history-section">
+      <div class="section-label">Lesson History</div>
+      <div id="historyList"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-label">Student Details</div>
+      <div id="settingsRows"></div>
+      <div style="margin-top:1rem;text-align:right">
+        <button class="btn-danger-text" onclick="deleteStudent()">Remove student</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ MODALS ════ -->
+
+<!-- Add Student -->
+<div class="overlay" id="addStudentOverlay">
+  <div class="modal">
+    <div class="modal-title">New Student</div>
+    <div class="field"><label>Name</label><input type="text" id="sName" placeholder="e.g. James"></div>
+    <div class="field-row">
+      <div class="field"><label>Lessons per package</label>
+        <select id="sPackage">
+          <option value="4">4 lessons</option><option value="6">6 lessons</option>
+          <option value="8">8 lessons</option><option value="10">10 lessons</option><option value="12">12 lessons</option>
+        </select>
+      </div>
+      <div class="field"><label>Rate per lesson ($)</label><input type="number" id="sRate" placeholder="50" min="0"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Next lesson date</label><input type="date" id="sNextDate"></div>
+      <div class="field"><label>Time</label><input type="time" id="sNextTime" value="15:00"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel-modal" onclick="closeModal('addStudentOverlay')">Cancel</button>
+      <button class="btn-save" onclick="saveNewStudent()">Add Student</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Student -->
+<div class="overlay" id="editStudentOverlay">
+  <div class="modal">
+    <div class="modal-title">Edit Student</div>
+    <div class="field"><label>Name</label><input type="text" id="eName"></div>
+    <div class="field-row">
+      <div class="field"><label>Lessons per package</label>
+        <select id="ePackage">
+          <option value="4">4 lessons</option><option value="6">6 lessons</option>
+          <option value="8">8 lessons</option><option value="10">10 lessons</option><option value="12">12 lessons</option>
+        </select>
+      </div>
+      <div class="field"><label>Rate per lesson ($)</label><input type="number" id="eRate" min="0"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel-modal" onclick="closeModal('editStudentOverlay')">Cancel</button>
+      <button class="btn-save" onclick="saveEditStudent()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mark Done -->
+<div class="overlay" id="doneOverlay">
+  <div class="modal">
+    <div class="modal-title">Lesson Complete ✓</div>
+    <div class="done-summary" id="doneSummary"></div>
+    <div class="cycle-banner" id="cycleBanner" style="display:none"></div>
+    <div class="field-row">
+      <div class="field"><label>Next lesson date</label><input type="date" id="dNextDate"></div>
+      <div class="field"><label>Time</label><input type="time" id="dNextTime"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel-modal" onclick="closeModal('doneOverlay')">Skip for now</button>
+      <button class="btn-save" onclick="confirmDone()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule Next -->
+<div class="overlay" id="scheduleOverlay">
+  <div class="modal">
+    <div class="modal-title">Next Lesson</div>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input type="date" id="schDate"></div>
+      <div class="field"><label>Time</label><input type="time" id="schTime"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel-modal" onclick="closeModal('scheduleOverlay')">Cancel</button>
+      <button class="btn-save" onclick="confirmSchedule()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Past Lesson -->
+<div class="overlay" id="editLessonOverlay">
+  <div class="modal">
+    <div class="modal-title">Edit Lesson</div>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input type="date" id="elDate"></div>
+      <div class="field"><label>Time</label><input type="time" id="elTime"></div>
+    </div>
+    <div class="field"><label>Status</label>
+      <select id="elStatus">
+        <option value="completed">Completed</option>
+        <option value="skipped">Skipped / Cancelled</option>
+      </select>
+    </div>
+    <div class="field"><label>Note (optional)</label><input type="text" id="elNote" placeholder="e.g. student was sick"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel-modal" onclick="closeModal('editLessonOverlay')">Cancel</button>
+      <button class="btn-save" onclick="confirmEditLesson()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let students = JSON.parse(localStorage.getItem('ll_v2') || '[]');
+let activeId = null;
+let editingLessonIdx = null;
+
+function save() { localStorage.setItem('ll_v2', JSON.stringify(students)); }
+function getS(id) { return students.find(s => s.id === id); }
+function getA() { return getS(activeId); }
+
+// Date utils
+const todayStr = () => new Date().toISOString().split('T')[0];
+const now = new Date();
+
+function nextWeek(ds) {
+  if (!ds) return '';
+  const d = new Date(ds + 'T12:00:00'); d.setDate(d.getDate() + 7);
+  return d.toISOString().split('T')[0];
+}
+
+function fmtDate(ds) {
+  if (!ds) return 'Not scheduled';
+  const d = new Date(ds + 'T12:00:00'), t = todayStr();
+  const tom = new Date(now); tom.setDate(tom.getDate() + 1);
+  if (ds === t) return 'Today';
+  if (ds === tom.toISOString().split('T')[0]) return 'Tomorrow';
+  const diff = Math.round((d - now) / 86400000);
+  if (diff > 0 && diff <= 6) return d.toLocaleDateString('en-US', {weekday:'long'});
+  return d.toLocaleDateString('en-US', {weekday:'short', day:'numeric', month:'short'});
+}
+function fmtFull(ds) {
+  if (!ds) return '—';
+  return new Date(ds + 'T12:00:00').toLocaleDateString('en-US', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
+}
+function isToday(ds) { return ds === todayStr(); }
+function isSoon(ds) { if(!ds) return false; const diff=Math.round((new Date(ds+'T12:00:00')-now)/86400000); return diff>=0&&diff<=2; }
+
+// Cycle helpers
+function completedTotal(s) { return s.history.filter(h=>h.status==='completed').length; }
+function completedInCycle(s) { const t=completedTotal(s); return t%s.package; }
+function cycleNum(s) { return Math.floor(completedTotal(s)/s.package)+1; }
+
+// ── HOME ──
+function renderHome() {
+  document.getElementById('headerDate').textContent =
+    now.toLocaleDateString('en-US', {weekday:'long', day:'numeric', month:'long'});
+
+  const todayS = students.filter(s => s.nextDate === todayStr());
+  const strip = document.getElementById('todayStrip');
+  if (todayS.length) {
+    strip.innerHTML = todayS.map(s=>`
+      <div class="today-strip" style="margin-bottom:.6rem">
+        <div><div class="today-name">${s.name}</div>
+        <div class="today-meta">Today${s.nextTime?' · '+s.nextTime.slice(0,5):''} · Lesson ${completedInCycle(s)+1} of ${s.package}</div></div>
+        <button class="btn-done" onclick="goDetail('${s.id}')">✓ Mark Done</button>
+      </div>`).join('');
+  } else {
+    strip.innerHTML = `<div class="today-strip empty" style="margin-bottom:1.4rem"><span style="font-size:.66rem;letter-spacing:.05em">No lessons today</span></div>`;
+  }
+
+  const list = document.getElementById('studentsList');
+  const empty = document.getElementById('emptyState');
+  if (!students.length) { list.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+
+  const sorted = [...students].sort((a,b)=>{
+    if(a.nextDate&&b.nextDate) return a.nextDate.localeCompare(b.nextDate);
+    if(a.nextDate) return -1; if(b.nextDate) return 1; return 0;
+  });
+
+  list.innerHTML = sorted.map(s=>{
+    const done=completedInCycle(s), rem=s.package-done;
+    const isLast=rem<=1&&done>0;
+    const ndCls=isToday(s.nextDate)?'today':isSoon(s.nextDate)?'soon':'';
+    const dots=Array.from({length:s.package},(_,i)=>
+      `<div class="dot ${i<done?'done':i===done&&s.nextDate?'upcoming':'empty'}"></div>`
+    ).join('');
+    return `<div class="student-card${isLast?' warn':''}" onclick="goDetail('${s.id}')">
+      <div class="card-left">
+        <div class="card-name">${s.name}</div>
+        <div class="dots">${dots}</div>
+        ${isLast?`<span class="card-sub warn-text">Last lesson — collect payment</span>`:`<span class="card-sub">${rem} left · $${(rem*s.rate).toLocaleString()}</span>`}
+      </div>
+      <div class="card-right">
+        <div class="next-label">Next Lesson</div>
+        <div class="next-date ${ndCls}">${fmtDate(s.nextDate)}</div>
+        ${s.nextTime?`<div class="next-time">${s.nextTime.slice(0,5)}</div>`:''}
+      </div>
+      <div class="chevron">›</div>
+    </div>`;
+  }).join('');
+}
+
+// ── DETAIL ──
+function renderDetail() {
+  const s=getA(); if(!s) return;
+  const done=completedInCycle(s), rem=s.package-done;
+  const isLast=rem<=1&&done>0;
+  const cn=cycleNum(s);
+
+  document.getElementById('detailName').textContent=s.name;
+  document.getElementById('detailSub').textContent=`Cycle ${cn} · $${s.rate}/lesson · ${s.package}-lesson package`;
+
+  const card=document.getElementById('cycleCard');
+  card.className='cycle-card'+(isLast?' warn-card':'');
+  document.getElementById('cycleCount').innerHTML=`${done} <small>/ ${s.package}</small>`;
+
+  const wm=document.getElementById('cycleWarnMsg');
+  if(isLast){wm.style.display='block';wm.textContent=`Last lesson — collect $${(s.package*s.rate).toLocaleString()}`;}
+  else wm.style.display='none';
+
+  document.getElementById('cycleDots').innerHTML=Array.from({length:s.package},(_,i)=>
+    `<div class="cycle-dot ${i<done?'done':i===done&&s.nextDate?'upcoming':'empty'}"></div>`
+  ).join('');
+
+  const nbd=document.getElementById('nextBoxDate');
+  nbd.textContent=fmtDate(s.nextDate);
+  nbd.className='next-box-date'+(isToday(s.nextDate)?' today':'');
+  document.getElementById('nextBoxTime').textContent=s.nextTime?s.nextTime.slice(0,5):'';
+
+  document.getElementById('actionGrid').innerHTML=done>=s.package
+    ?`<button class="btn-act green" style="grid-column:1/-1" onclick="newCycle()">🎉 Start New Cycle</button>`
+    :`<button class="btn-act green" onclick="openDoneModal()">✓ Mark Done</button>
+      <button class="btn-act" onclick="openScheduleModal()">Schedule Next</button>`;
+
+  // History
+  const hist=document.getElementById('historyList');
+  if(!s.history.length){
+    hist.innerHTML='<div style="font-size:.7rem;color:var(--ink-faint);padding:.6rem 0">No lessons recorded yet.</div>';
+  } else {
+    hist.innerHTML=s.history.slice().reverse().map((h,ri)=>{
+      const oi=s.history.length-1-ri;
+      return `<div class="history-item">
+        <div class="hist-dot ${h.status}"></div>
+        <div class="hist-left">
+          <div class="hist-date">${fmtFull(h.date)}${h.time?' · '+h.time.slice(0,5):''}</div>
+          ${h.note?`<div class="hist-note">${h.note}</div>`:''}
+        </div>
+        <span class="hist-badge ${h.status==='completed'?'done':'skipped'}">${h.status==='completed'?'Done':'Skipped'}</span>
+        <button class="btn-text" onclick="openEditLesson(${oi})" style="margin-left:.5rem;flex-shrink:0">Edit</button>
+      </div>`;
+    }).join('');
+  }
+
+  // Settings
+  document.getElementById('settingsRows').innerHTML=`
+    <div class="settings-row"><span class="settings-label">Package size</span><span class="settings-val">${s.package} lessons</span></div>
+    <div class="settings-row"><span class="settings-label">Rate per lesson</span><span class="settings-val">$${s.rate}</span></div>
+    <div class="settings-row"><span class="settings-label">Total lessons done</span><span class="settings-val">${completedTotal(s)}</span></div>
+    <div class="settings-row"><span class="settings-label">Cycles completed</span><span class="settings-val">${cn-1}</span></div>`;
+}
+
+// ── NAV ──
+function goHome() {
+  document.getElementById('pageDetail').classList.remove('active');
+  document.getElementById('pageHome').classList.add('active');
+  activeId=null; renderHome();
+}
+function goDetail(id) {
+  activeId=id;
+  document.getElementById('pageHome').classList.remove('active');
+  document.getElementById('pageDetail').classList.add('active');
+  renderDetail();
+}
+
+// ── STUDENT CRUD ──
+function saveNewStudent() {
+  const name=document.getElementById('sName').value.trim();
+  if(!name){showToast('Enter a student name');return;}
+  students.push({
+    id:Date.now().toString(), name,
+    package:parseInt(document.getElementById('sPackage').value),
+    rate:parseFloat(document.getElementById('sRate').value)||0,
+    nextDate:document.getElementById('sNextDate').value||null,
+    nextTime:document.getElementById('sNextTime').value||null,
+    history:[],
+  });
+  save(); closeModal('addStudentOverlay');
+  document.getElementById('sName').value='';
+  renderHome(); showToast(`${name} added`);
+}
+function openEditStudent() {
+  const s=getA();if(!s)return;
+  document.getElementById('eName').value=s.name;
+  document.getElementById('ePackage').value=s.package;
+  document.getElementById('eRate').value=s.rate;
+  openModal('editStudentOverlay');
+}
+function saveEditStudent() {
+  const s=getA();if(!s)return;
+  s.name=document.getElementById('eName').value.trim()||s.name;
+  s.package=parseInt(document.getElementById('ePackage').value);
+  s.rate=parseFloat(document.getElementById('eRate').value)||0;
+  save();closeModal('editStudentOverlay');renderDetail();renderHome();showToast('Saved');
+}
+function deleteStudent() {
+  const s=getA();if(!s)return;
+  if(!confirm(`Remove ${s.name}? All history will be lost.`))return;
+  students=students.filter(x=>x.id!==activeId);
+  save();goHome();showToast('Student removed');
+}
+
+// ── MARK DONE ──
+function openDoneModal() {
+  const s=getA();if(!s)return;
+  const done=completedInCycle(s), after=done+1, cycleEnd=after>=s.package;
+  document.getElementById('doneSummary').innerHTML=
+    `<strong>${s.name}</strong> — Lesson ${after} of ${s.package} complete.`+
+    (cycleEnd?'':` <br>${s.package-after} lesson${s.package-after!==1?'s':''} remaining.`);
+  const banner=document.getElementById('cycleBanner');
+  if(cycleEnd){banner.style.display='block';banner.textContent=`🎉 Cycle complete — collect $${(s.package*s.rate).toLocaleString()} from ${s.name}`;}
+  else banner.style.display='none';
+  document.getElementById('dNextDate').value=nextWeek(s.nextDate);
+  document.getElementById('dNextTime').value=s.nextTime||'15:00';
+  openModal('doneOverlay');
+}
+function confirmDone() {
+  const s=getA();if(!s)return;
+  s.history.push({date:s.nextDate||todayStr(),time:s.nextTime||null,status:'completed',note:''});
+  s.nextDate=document.getElementById('dNextDate').value||null;
+  s.nextTime=document.getElementById('dNextTime').value||null;
+  save();closeModal('doneOverlay');renderDetail();renderHome();showToast('✓ Lesson marked done');
+}
+
+// ── SCHEDULE ──
+function openScheduleModal() {
+  const s=getA();if(!s)return;
+  document.getElementById('schDate').value=s.nextDate||'';
+  document.getElementById('schTime').value=s.nextTime||'15:00';
+  openModal('scheduleOverlay');
+}
+function confirmSchedule() {
+  const s=getA();if(!s)return;
+  s.nextDate=document.getElementById('schDate').value||null;
+  s.nextTime=document.getElementById('schTime').value||null;
+  save();closeModal('scheduleOverlay');renderDetail();renderHome();showToast('Next lesson updated');
+}
+
+// ── EDIT PAST LESSON ──
+function openEditLesson(idx) {
+  editingLessonIdx=idx;
+  const s=getA();if(!s)return;
+  const h=s.history[idx];
+  document.getElementById('elDate').value=h.date||'';
+  document.getElementById('elTime').value=h.time||'';
+  document.getElementById('elStatus').value=h.status;
+  document.getElementById('elNote').value=h.note||'';
+  openModal('editLessonOverlay');
+}
+function confirmEditLesson() {
+  const s=getA();if(!s)return;
+  const h=s.history[editingLessonIdx];
+  h.date=document.getElementById('elDate').value||h.date;
+  h.time=document.getElementById('elTime').value||null;
+  h.status=document.getElementById('elStatus').value;
+  h.note=document.getElementById('elNote').value.trim();
+  save();closeModal('editLessonOverlay');renderDetail();showToast('Lesson updated');
+}
+
+// ── NEW CYCLE ──
+function newCycle() {
+  const s=getA();if(!s)return;
+  if(!confirm(`Start a new ${s.package}-lesson cycle for ${s.name}?`))return;
+  s.nextDate=null;s.nextTime=null;
+  save();renderDetail();showToast('New cycle started');
+}
+
+// ── UTILS ──
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.overlay').forEach(el=>{
+  el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
+});
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+renderHome();
+
+// ── PWA ──
+(function(){
+  // Generate canvas icon
+  const canvas=document.createElement('canvas');
+  canvas.width=180;canvas.height=180;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#1A1A1A';
+  if(ctx.roundRect){ctx.roundRect(0,0,180,180,32);ctx.fill();}
+  else{ctx.fillRect(0,0,180,180);}
+  ctx.fillStyle='#F7F5F0';
+  ctx.font='italic bold 64px serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('LL',90,88);
+  ctx.fillStyle='#2D5A3D';
+  ctx.beginPath();ctx.arc(128,52,13,0,Math.PI*2);ctx.fill();
+  const iconUrl=canvas.toDataURL('image/png');
+  document.getElementById('appleTouchIcon').href=iconUrl;
+
+  // Dynamic manifest
+  const mf={name:'LessonLog',short_name:'LessonLog',start_url:window.location.pathname,
+    display:'standalone',background_color:'#F7F5F0',theme_color:'#1A1A1A',
+    icons:[{src:iconUrl,sizes:'180x180',type:'image/png'}]};
+  const mb=new Blob([JSON.stringify(mf)],{type:'application/json'});
+  document.querySelector('link[rel="manifest"]').href=URL.createObjectURL(mb);
+
+  // Service worker for offline
+  if('serviceWorker' in navigator){
+    const sw=`const C='ll-v1',A=['${window.location.pathname}'];
+self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(A))));
+self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));`;
+    const sb=new Blob([sw],{type:'application/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(sb)).catch(()=>{});
+  }
+})();
