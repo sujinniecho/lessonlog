@@ -38,17 +38,21 @@
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'DM Mono', monospace; background: var(--bg); color: var(--ink); min-height: 100vh; padding-bottom: env(safe-area-inset-bottom); }
 
-header { padding-top: max(1.4rem, env(safe-area-inset-top)); }
-
 .page { display: none; min-height: 100vh; }
 .page.active { display: block; }
 
 /* HEADER */
 header {
   padding: 1.4rem 2rem;
+  padding-top: max(1.4rem, calc(env(safe-area-inset-top) + .8rem));
+  padding-left: max(2rem, env(safe-area-inset-left));
+  padding-right: max(2rem, env(safe-area-inset-right));
   display: flex; align-items: center; justify-content: space-between;
   border-bottom: 1px solid var(--rule); background: var(--surface);
   position: sticky; top: 0; z-index: 10;
+  /* Extend background behind status bar */
+  margin-top: calc(-1 * env(safe-area-inset-top));
+  padding-top: calc(env(safe-area-inset-top) + 1rem) !important;
 }
 .logo { font-family: 'Instrument Serif', serif; font-size: 1.4rem; letter-spacing: -.02em; cursor: pointer; }
 .logo em { font-style: italic; color: var(--accent); }
@@ -107,7 +111,7 @@ main { padding: 1.6rem 2rem; max-width: 600px; }
 .cycle-card.warn-card { border-color: var(--warn); background: var(--warn-light); }
 .cycle-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .9rem; }
 .cycle-label { font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mid); margin-bottom: .2rem; }
-.cycle-count { font-family: 'Instrument Serif', serif; font-size: 2rem; line-height: 1; }
+.cycle-count { font-family: 'Instrument Serif', serif; font-size: 2.4rem; line-height: 1; }
 .cycle-count small { font-family: 'DM Mono', monospace; font-size: .72rem; color: var(--ink-mid); }
 .cycle-warn-msg { font-size: .75rem; color: var(--warn); font-weight: 500; margin-top: .4rem; }
 .cycle-dots { display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap; }
@@ -220,7 +224,7 @@ main { padding: 1.6rem 2rem; max-width: 600px; }
     <div class="cycle-card" id="cycleCard">
       <div class="cycle-top">
         <div>
-          <div class="cycle-label">This Cycle</div>
+          <div class="cycle-label" id="cycleLabel">This Cycle</div>
           <div class="cycle-count" id="cycleCount"></div>
           <div class="cycle-warn-msg" id="cycleWarnMsg" style="display:none"></div>
         </div>
@@ -460,7 +464,11 @@ function renderDetail() {
 
   const card=document.getElementById('cycleCard');
   card.className='cycle-card'+(isLast?' warn-card':'');
-  document.getElementById('cycleCount').innerHTML=`${done} <small>/ ${s.package}</small>`;
+  const nextLessonNum = done + 1;
+  document.getElementById('cycleLabel').textContent = done >= s.package ? 'Cycle Complete' : `Lesson ${nextLessonNum} of ${s.package}`;
+  document.getElementById('cycleCount').innerHTML = done >= s.package
+    ? `<span style="font-size:1.1rem">All done ✓</span>`
+    : `<span style="font-size:.72rem;font-family:'DM Mono',monospace;color:var(--ink-mid);display:block;margin-bottom:.1rem">NEXT UP</span>${nextLessonNum}<small> / ${s.package}</small>`;
 
   const wm=document.getElementById('cycleWarnMsg');
   if(isLast){wm.style.display='block';wm.textContent=`Last lesson — collect $${(s.package*s.rate).toLocaleString()}`;}
@@ -476,9 +484,8 @@ function renderDetail() {
   document.getElementById('nextBoxTime').textContent=s.nextTime?s.nextTime.slice(0,5):'';
 
   document.getElementById('actionGrid').innerHTML=done>=s.package
-    ?`<button class="btn-act green" style="grid-column:1/-1" onclick="newCycle()">🎉 Start New Cycle</button>`
-    :`<button class="btn-act green" onclick="openDoneModal()">✓ Mark Done</button>
-      <button class="btn-act" onclick="openScheduleModal()">Schedule Next</button>`;
+    ?`<button class="btn-act green" style="grid-column:1/-1;padding:14px;font-size:.82rem" onclick="newCycle()">🎉 Start New Cycle</button>`
+    :`<button class="btn-act green" style="grid-column:1/-1;padding:16px;font-size:.82rem;letter-spacing:.05em" onclick="openDoneModal()">✓ Mark Done</button>`;
 
   // History
   const hist=document.getElementById('historyList');
@@ -625,6 +632,23 @@ function newCycle() {
 // ── UTILS ──
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// Expose to window for inline onclick handlers
+window.openModal=openModal;
+window.closeModal=closeModal;
+window.goHome=goHome;
+window.goDetail=goDetail;
+window.openDoneModal=openDoneModal;
+window.confirmDone=confirmDone;
+window.openScheduleModal=openScheduleModal;
+window.confirmSchedule=confirmSchedule;
+window.openEditStudent=openEditStudent;
+window.saveEditStudent=saveEditStudent;
+window.saveNewStudent=saveNewStudent;
+window.deleteStudent=deleteStudent;
+window.openEditLesson=openEditLesson;
+window.confirmEditLesson=confirmEditLesson;
+window.newCycle=newCycle;
 document.querySelectorAll('.overlay').forEach(el=>{
   el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
 });
