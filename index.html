@@ -44,7 +44,6 @@ header{
 .btn-ghost:hover{color:var(--ink);opacity:1}
 .btn-link{background:none;border:none;font-family:'DM Mono',monospace;font-size:.66rem;color:var(--mid);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .btn-link:hover{color:var(--ink)}
-.btn-link-warn{background:none;border:none;font-family:'DM Mono',monospace;font-size:.66rem;color:var(--warn);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 
 /* main */
 main{padding:1.4rem 1.5rem;max-width:600px}
@@ -134,12 +133,6 @@ main{padding:1.4rem 1.5rem;max-width:600px}
 .h-badge.done{background:var(--green-light);color:var(--green)}
 .h-badge.skipped{background:var(--rule);color:var(--mid)}
 
-/* settings */
-.settings-section{margin-top:1.5rem;padding-top:1.2rem;border-top:1px solid var(--rule)}
-.s-row{display:flex;justify-content:space-between;align-items:center;padding:.65rem 0;border-bottom:1px solid var(--rule)}
-.s-row:last-child{border-bottom:none}
-.s-row-lbl{font-size:.68rem;color:var(--mid)}
-.s-row-val{font-size:.76rem;font-weight:500}
 
 /* modals */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
@@ -162,6 +155,11 @@ main{padding:1.4rem 1.5rem;max-width:600px}
 /* toast */
 .toast{position:fixed;bottom:1.8rem;left:50%;transform:translateX(-50%) translateY(14px);background:var(--ink);color:#fff;padding:9px 18px;border-radius:8px;font-size:.7rem;opacity:0;transition:all .26s;pointer-events:none;z-index:300;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* footer */
+.app-footer{text-align:center;padding:2rem 1.5rem 3rem;color:var(--faint);font-size:.58rem;letter-spacing:.08em}
+.app-footer a{color:var(--faint);text-decoration:none}
+.app-footer a:hover{color:var(--mid)}
 
 @media(max-width:560px){
   header,main,.detail-hdr,.detail-body{padding-left:1rem;padding-right:1rem}
@@ -189,13 +187,13 @@ main{padding:1.4rem 1.5rem;max-width:600px}
       <button class="btn btn-dark" id="btnAddStudentEmpty">+ Add Student</button>
     </div>
   </main>
+  <footer class="app-footer">created by @sjc</footer>
 </div>
 
 <!-- DETAIL -->
 <div class="page" id="pageDetail">
   <header>
     <button class="btn btn-ghost" id="btnBack">← All Students</button>
-    <button class="btn btn-dark" id="btnHeaderMarkDone">✓ Mark Done</button>
   </header>
   <div class="detail-hdr">
     <div>
@@ -224,13 +222,7 @@ main{padding:1.4rem 1.5rem;max-width:600px}
       <div class="lbl">Lesson History</div>
       <div id="histList"></div>
     </div>
-    <div class="settings-section">
-      <div class="lbl">Student Details</div>
-      <div id="settingsRows"></div>
-      <div style="margin-top:1rem;text-align:right">
-        <button class="btn-link-warn" id="btnDeleteStudent">Remove student</button>
-      </div>
-    </div>
+
   </div>
 </div>
 
@@ -258,6 +250,7 @@ main{padding:1.4rem 1.5rem;max-width:600px}
     </div>
   </div>
 </div>
+
 
 <!-- MODAL: Edit Student -->
 <div class="overlay" id="ovEditStudent">
@@ -347,24 +340,35 @@ function get(id) { return db.find(s => s.id === id); }
 function active() { return get(activeId); }
 
 // ── DATES ──
-function todayStr() { return new Date().toISOString().split('T')[0]; }
-const _now = new Date();
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+function now() { return new Date(); }
 
 function nextWeek(ds) {
   if (!ds) return '';
   const d = new Date(ds + 'T12:00:00');
   d.setDate(d.getDate() + 7);
-  return d.toISOString().split('T')[0];
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
 }
 
 function fmtDate(ds) {
   if (!ds) return 'Not scheduled';
   const d = new Date(ds + 'T12:00:00');
   const t = todayStr();
-  const tom = new Date(_now); tom.setDate(tom.getDate() + 1);
+  const _n = now();
+  const tom = new Date(_n); tom.setDate(tom.getDate() + 1);
+  const tomStr = tom.getFullYear() + '-' +
+    String(tom.getMonth()+1).padStart(2,'0') + '-' +
+    String(tom.getDate()).padStart(2,'0');
   if (ds === t) return 'Today';
-  if (ds === tom.toISOString().split('T')[0]) return 'Tomorrow';
-  const diff = Math.round((d - _now) / 86400000);
+  if (ds === tomStr) return 'Tomorrow';
+  const diff = Math.round((d - _n) / 86400000);
   if (diff > 0 && diff <= 6) return d.toLocaleDateString('en-US', {weekday:'long'});
   return d.toLocaleDateString('en-US', {weekday:'short', day:'numeric', month:'short'});
 }
@@ -377,7 +381,7 @@ function fmtFull(ds) {
 function isToday(ds) { return ds === todayStr(); }
 function isSoon(ds) {
   if (!ds) return false;
-  return Math.round((new Date(ds + 'T12:00:00') - _now) / 86400000) <= 2;
+  return Math.round((new Date(ds + 'T12:00:00') - now()) / 86400000) <= 2;
 }
 
 // ── CYCLE HELPERS ──
@@ -400,7 +404,7 @@ function toast(msg) {
 // ── HOME ──
 function renderHome() {
   document.getElementById('headerDate').textContent =
-    _now.toLocaleDateString('en-US', {weekday:'long', day:'numeric', month:'long'});
+    now().toLocaleDateString('en-US', {weekday:'long', day:'numeric', month:'long'});
 
   // Today strip
   const todayStudents = db.filter(s => s.nextDate === todayStr());
@@ -543,12 +547,6 @@ function renderDetail() {
     });
   }
 
-  // Settings
-  document.getElementById('settingsRows').innerHTML = `
-    <div class="s-row"><span class="s-row-lbl">Package size</span><span class="s-row-val">${s.package} lessons</span></div>
-    <div class="s-row"><span class="s-row-lbl">Rate per lesson</span><span class="s-row-val">$${s.rate}</span></div>
-    <div class="s-row"><span class="s-row-lbl">Total lessons done</span><span class="s-row-val">${totalDone(s)}</span></div>
-    <div class="s-row"><span class="s-row-lbl">Cycles completed</span><span class="s-row-val">${cn - 1}</span></div>`;
 }
 
 // ── NAV ──
@@ -589,6 +587,8 @@ document.getElementById('btnSaveAdd').addEventListener('click', () => {
   toast(`${name} added`);
 });
 
+
+
 // ── EDIT STUDENT ──
 document.getElementById('btnEditStudent').addEventListener('click', () => {
   const s = active(); if (!s) return;
@@ -607,17 +607,7 @@ document.getElementById('btnSaveEdit').addEventListener('click', () => {
   toast('Saved');
 });
 
-// ── DELETE STUDENT ──
-document.getElementById('btnDeleteStudent').addEventListener('click', () => {
-  const s = active(); if (!s) return;
-  if (!confirm(`Remove ${s.name}? All history will be lost.`)) return;
-  db = db.filter(x => x.id !== activeId);
-  persist(); goHome(); toast('Student removed');
-});
-
 // ── MARK DONE ──
-document.getElementById('btnHeaderMarkDone').addEventListener('click', openDoneModal);
-
 function openDoneModal() {
   const s = active(); if (!s) return;
   const done = doneInCycle(s);
@@ -718,8 +708,16 @@ document.querySelectorAll('.overlay').forEach(el => {
   const mf = {name:'LessonLog',short_name:'LessonLog',start_url:'./',display:'standalone',background_color:'#F7F5F0',theme_color:'#1A1A1A',icons:[{src:icon,sizes:'180x180',type:'image/png'}]};
   document.getElementById('manifestLink').href = URL.createObjectURL(new Blob([JSON.stringify(mf)], {type:'application/json'}));
   if ('serviceWorker' in navigator) {
-    const sw = `const C='ll-v3';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.add('/'))));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));`;
-    navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
+    // No-op SW: keeps PWA installable without the broken-cache issue
+    // from registering via a temporary blob URL.
+    const sw = `self.addEventListener('fetch',e=>{});`;
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    }).finally(() => {
+      navigator.serviceWorker.register(
+        URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))
+      ).catch(()=>{});
+    });
   }
 })();
 
